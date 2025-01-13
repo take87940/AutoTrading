@@ -2,7 +2,9 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 
-const url = "https://www.okx.com/api/v5/market/ticker?instId=DOGE-USDT-SWAP";
+const Coin = "DOGE";
+
+const url = "https://www.okx.com/api/v5/market/ticker?instId=" + Coin + "-USDT-SWAP";
 
 class Order {
   constructor(id, asset, entryPrice, margin, leverage, status) {
@@ -22,6 +24,7 @@ const botToken = '7903301344:AAE28RfW1X7yb4SA3SIPWFMs5lKLlKAU5Lw'; // 替換為�
 const chatId = '6945471691'; // 替換為你的聊天 ID
 
 const TrackETHContract2 = () => {
+  const multi = 2;
   //
   const [recordMPieces, setRecordMPieces] = useState([]);
   //currentPrice
@@ -38,7 +41,7 @@ const TrackETHContract2 = () => {
   //當前持倉資訊
   const [entryPrice, setEntryPrice] = useState();
   const [margin, setMargin] = useState(1000);
-  const [leverage, setLeverage] = useState(10);
+  const [leverage, setLeverage] = useState(1);
   const [status, setStatus] = useState(true);
 
   //Auto Trade
@@ -160,7 +163,7 @@ const TrackETHContract2 = () => {
     if(!entryPrice)
     {
       setEntryPrice(price);
-      const new_order = new Order(0, "DOGE", price, margin, leverage, true);
+      const new_order = new Order(0, Coin, price, margin, leverage, true);
       orders.push(new_order);
       // 儲存持倉資料
       saveOrdersToLocalStorage(orders);
@@ -190,7 +193,7 @@ const TrackETHContract2 = () => {
     if(!entryPrice)
       {
         setEntryPrice(price);
-        const new_order = new Order(0, "DOGE", price, margin, leverage, false);
+        const new_order = new Order(0, Coin, price, margin, leverage, false);
         orders.push(new_order);
         // 儲存持倉資料
         saveOrdersToLocalStorage(orders);
@@ -240,6 +243,16 @@ const TrackETHContract2 = () => {
     }else{
       bal = parseFloat(balance - fee + (entryPrice - exPrice)/entryPrice * margin * leverage);
     }
+    
+    if(bal < balance) //Loss
+    {
+      setLeverage(prevLeverage => prevLeverage * multi);
+    }
+    else
+    {
+      setLeverage(1);
+    }
+
     setBalance(bal);
     setEntryPrice(null);
     localStorage.removeItem("orders");
@@ -248,7 +261,7 @@ const TrackETHContract2 = () => {
 
     const newHistory = [...history, { 
       id: Date.now(), 
-      asset: "DOGE", 
+      asset: Coin, 
       status,
       contiCount,
       entryPrice: entryPrice.toFixed(5), 
@@ -284,7 +297,7 @@ const TrackETHContract2 = () => {
 
     const message = `
     交易 ${formattedTime}
-    資產: DOGE 數量: ${(margin * leverage).toFixed(2)}USDT (${status ? 'Long' : 'Short'} ${leverage}x)
+    資產: ${Coin} 數量: ${(margin * leverage).toFixed(2)}USDT (${status ? 'Long' : 'Short'} ${leverage}x)
     入場價格: ${entryPrice} 出場價格: ${exPrice}
     獲利: ${(_profit - fee).toFixed(2)} USDT (${((_profit - fee) / margin * 100).toFixed(2)}%) 手續費: ${(fee).toFixed(2)} USDT
     帳戶結餘: ${bal.toFixed(2)}
@@ -365,7 +378,7 @@ const TrackETHContract2 = () => {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', height: '100vh' }}>
     <div style={{ flex: 1, padding: '20px' }}>
-      <h1>Real-time DOGE Contract Tracking</h1>
+      <h1>Real-time {Coin} Contract Tracking</h1>
       <h1>Price: {price || "Loading..."}</h1>
       {balance && <h2>Account Balance: {(balance).toFixed(2)} USDT</h2>}
       {entryPrice && <h2>Float Balance: {(profit + balance).toFixed(2)} USDT</h2>}
