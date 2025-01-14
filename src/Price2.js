@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 
-const Coin = "DOGE";
+const Coin = "ETH";
 
 const url = "https://www.okx.com/api/v5/market/ticker?instId=" + Coin + "-USDT-SWAP";
 
@@ -24,7 +24,9 @@ const botToken = '7903301344:AAE28RfW1X7yb4SA3SIPWFMs5lKLlKAU5Lw'; // 替換為�
 const chatId = '6945471691'; // 替換為你的聊天 ID
 
 const TrackETHContract2 = () => {
-  const multi = 2;
+  const round_seconds = 120;
+  const multi = 1.1;
+  const L = 10;
   //
   const [recordMPieces, setRecordMPieces] = useState([]);
   //currentPrice
@@ -41,7 +43,7 @@ const TrackETHContract2 = () => {
   //當前持倉資訊
   const [entryPrice, setEntryPrice] = useState();
   const [margin, setMargin] = useState(1000);
-  const [leverage, setLeverage] = useState(1);
+  const [leverage, setLeverage] = useState(L);
   const [status, setStatus] = useState(true);
 
   //Auto Trade
@@ -85,12 +87,12 @@ const TrackETHContract2 = () => {
 
     const now = new Date();
     const currentTime = now.getTime(); // 當前的毫秒數
-    const currentMinuteTime = Math.floor(currentTime / 60000) * 60000; // 當前分鐘的毫秒數起點（整分）
+    const currentMinuteTime = Math.floor(currentTime / round_seconds / 1000) * round_seconds * 1000; // 當前分鐘的毫秒數起點（整分）
 
     // 更新當前價格
     const lastPrice = parseFloat(price);
     // 判斷是否進入新的一分鐘
-    console.log('lastMinuteTime', lastMinuteTime, 'currentMinuteTime', currentMinuteTime, 'times', currentTime);
+    console.log('lastMinuteTime', lastMinuteTime / 1000, 'currentMinuteTime', currentMinuteTime / 1000, 'times', currentTime / 1000);
     if (lastMinuteTime === null || currentMinuteTime !== lastMinuteTime) {
       console.log("Change M!");
       setRecordMPieces((prevPrices) => {
@@ -250,7 +252,7 @@ const TrackETHContract2 = () => {
     }
     else
     {
-      setLeverage(1);
+      setLeverage(L);
     }
 
     setBalance(bal);
@@ -398,6 +400,7 @@ const TrackETHContract2 = () => {
         </div>
       }
       <div>
+        <h2>Round Time: {round_seconds}</h2>
         <h3>Opening Prices: {openingPrices}</h3>
         <h3>Opening Prices: {recordMPieces.join(", ")}</h3>
         { price > openingPrices ? <h3>目前為漲K</h3> : <h3>目前為跌K</h3>}
