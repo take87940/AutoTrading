@@ -1,6 +1,6 @@
-// 2025.1.14 更: 增加early_leave 根據前根K棒 
-//若目前持倉為Short 則若價格超越前根K棒高點 轉為Long
-//           Long         跌破前根K棒低點 轉為Short
+// 2025.1.15更: 將opening Price 與 opening Prices儲存
+//將 FKH FHL NKH NKL儲存
+//CountiCount 儲存
 
 import React, { useRef, useEffect, useState } from 'react';
 
@@ -82,6 +82,102 @@ const TrackETHContract2 = () => {
         console.error("Error fetching price:", error);
       }
     };
+
+    // 從 Local Storage 加載持倉資料
+    const loadOrdersFromLocalStorage = () => 
+    {
+      const savedOrders = localStorage.getItem("orders");
+      return savedOrders ? JSON.parse(savedOrders) : [];
+    };
+
+    const loadUserBalanceLocalStorage = () =>
+    {
+      const savedBal = localStorage.getItem("Balance");
+      return savedBal ? JSON.parse(savedBal) : balance;
+    };
+    
+    const loadHistoryFromLocalStorage = () => 
+    {
+      const savedHistory = localStorage.getItem("history");
+      return savedHistory ? JSON.parse(savedHistory) : [];
+    };
+
+    const loadOpeningPrice = () =>
+    {
+      const savedOpeningPrice = localStorage.getItem("OpeningPrice");
+      return savedOpeningPrice ? JSON.parse(savedOpeningPrice) : null;
+    }
+
+    const loadOpeningPrices = () =>
+    {
+      const savedOpeningPrices = localStorage.getItem("OpeningPrices");
+      return savedOpeningPrices ? JSON.parse(savedOpeningPrices) : [];
+    }
+
+    const loadFKH = () =>
+    { 
+      const savedFKH = localStorage.getItem("FKH");
+      return savedFKH ? JSON.parse(savedFKH) : null;
+    }
+
+    const loadFKL = () =>
+    {
+      const savedFKL = localStorage.getItem("FKL");
+      return savedFKL ? JSON.parse(savedFKL) : null;
+    }
+
+    const loadNKH = () =>
+    {
+      const savedNKH = localStorage.getItem("NKH");
+      console.log("SS", savedNKH);
+      return savedNKH ? JSON.parse(savedNKH) : null;
+    }
+
+    const loadNKL = () =>
+    {
+      const savedNKL = localStorage.getItem("NKL");
+      return savedNKL ? JSON.parse(savedNKL) : null;
+    }
+
+    const loadCountiCount = () =>
+    {
+      const savedCountiCount = localStorage.getItem("CountiCount");
+      return savedCountiCount ? JSON.parse(savedCountiCount) : null;
+    }
+    //
+
+    // 加載持倉資料
+    const bal = parseFloat(loadUserBalanceLocalStorage());
+    setBalance(bal);
+    const loadedOrders = loadOrdersFromLocalStorage();
+    console.log("loadedOrders", loadedOrders);
+    if(loadedOrders.length > 0){
+      console.log("hello")
+      setEntryPrice(parseFloat(loadedOrders[0].entryPrice));
+      setMargin(parseFloat(loadedOrders[0].margin));
+      setLeverage(parseInt(loadedOrders[0].leverage));
+      setStatus(loadedOrders[0].status);
+    }
+
+    //加載OpeningPrice、OpeningPrices
+    setOpeningPrices(parseFloat(loadOpeningPrice()));
+    setRecordMPieces(loadOpeningPrices());
+
+    //加載K棒紀錄
+    setFKH(parseFloat(loadFKH()));
+    setFKL(parseFloat(loadFKL()));
+    setNKH(parseFloat(loadNKH()));
+    setNKL(parseFloat(loadNKL()));
+
+    //加載CountiCount
+    setCountiCount(parseInt(loadCountiCount()));
+
+    //加載歷史紀錄
+    const loadedHistory = loadHistoryFromLocalStorage();
+    setHistory(loadedHistory); // 設置歷史紀錄
+    //
+
+
     // Fetch price every 0.2 seconds
     const intervalId = setInterval(fetchPrice, 200);
     // Clean up interval on component unmount
@@ -91,7 +187,7 @@ const TrackETHContract2 = () => {
   const [lastMinuteTime, setLastMinuteTime] = useState(null);
   
   useEffect(()=> {
-    if(price === undefined)
+    if(price === undefined || price == 0)
       return;
 
     const now = new Date();
@@ -108,6 +204,7 @@ const TrackETHContract2 = () => {
       {
         setAutoLong(false);
         setCountiCount(1);
+        localStorage.setItem("CountiCount", JSON.stringify(1));
         leave();
         setTrigger(prevTrigger => !prevTrigger);
       }
@@ -118,6 +215,7 @@ const TrackETHContract2 = () => {
       {
         setAutoLong(true);
         setCountiCount(1);
+        localStorage.setItem("CountiCount", JSON.stringify(1));
         leave();
         setTrigger(prevTrigger => !prevTrigger);
       }
@@ -127,48 +225,63 @@ const TrackETHContract2 = () => {
     // 判斷是否進入新的一分鐘
     console.log('lastMinuteTime', lastMinuteTime / 1000, 'currentMinuteTime', currentMinuteTime / 1000, 'times', currentTime / 1000);
     if (lastMinuteTime === null || currentMinuteTime !== lastMinuteTime) {
-      console.log("Change M!");
-      //存下FK狀態
-      setFKH(NKH);
-      setFKL(NKL);
-      //
-      //Reset K棒狀態
-      setNKH(lastPrice);
-      setNKL(lastPrice);
-      //
-      setRecordMPieces((prevPrices) => {
-        const updatedPrices = [...prevPrices, lastPrice]; // 保存最後價格作為收盤價
-        if (updatedPrices.length > 7) updatedPrices.shift(); // 保留最新 7 個
-        return updatedPrices;
-      });
-      //目前為 舊盤收盤 新盤開始階段
-      //若無紀錄先儲存 有紀錄則比較開盤 收盤價判斷漲跌
-      if (!openingPrices) {
-        setOpeningPrices(lastPrice);
-        console.log(`New minute started at ${new Date(currentMinuteTime)}, opening price: ${lastPrice}`);
+
+      if(lastMinuteTime == null)
+      {
+        setLastMinuteTime(currentMinuteTime);
       }
       else
-      { 
-        var foreKState = lastPrice > openingPrices; 
-        setOpeningPrices(lastPrice);
-        //若方向一樣 => 不變
-        //不同則平倉後 朝foreKState走
-        if(foreKState !== status) 
-        {
-          setAutoLong(foreKState);
-          setCountiCount(1);
-          leave();
-          setTrigger(prevTrigger => !prevTrigger); //觸發交易
+      {
+        console.log("Change M!");
+        //存下FK狀態
+        setFKH(NKH);
+        localStorage.setItem("FKH", JSON.stringify(NKH));
+        setFKL(NKL);
+        localStorage.setItem("FKL", JSON.stringify(NKL));
+        //
+        //Reset K棒狀態
+        setNKH(lastPrice);
+        setNKL(lastPrice);
+        //
+        setRecordMPieces((prevPrices) => {
+          const updatedPrices = [...prevPrices, lastPrice]; // 保存最後價格作為收盤價
+          if (updatedPrices.length > 7) updatedPrices.shift(); // 保留最新 7 個
+          localStorage.setItem("OpeningPrices", JSON.stringify(updatedPrices));
+          return updatedPrices;
+        });
+        //目前為 舊盤收盤 新盤開始階段
+        //若無紀錄先儲存 有紀錄則比較開盤 收盤價判斷漲跌
+        if (!openingPrices) {
+          setOpeningPrices(lastPrice);
+          localStorage.setItem("OpeningPrice", JSON.stringify(lastPrice));
+          console.log(`New minute started at ${new Date(currentMinuteTime)}, opening price: ${lastPrice}`);
         }
         else
-        {
-          setCountiCount(prevCountiCount => prevCountiCount + 1);
+        { 
+          var foreKState = lastPrice > openingPrices; 
+          setOpeningPrices(lastPrice);
+          localStorage.setItem("OpeningPrice", JSON.stringify(lastPrice));
+          //若方向一樣 => 不變
+          //不同則平倉後 朝foreKState走
+          if(foreKState !== status) 
+          {
+            setAutoLong(foreKState);
+            setCountiCount(1);
+            localStorage.setItem("CountiCount", JSON.stringify(1));
+            leave();
+            setTrigger(prevTrigger => !prevTrigger); //觸發交易
+          }
+          else
+          { 
+            localStorage.setItem("CountiCount", JSON.stringify(contiCount + 1));
+            setCountiCount(prevCountiCount => prevCountiCount + 1);
+          }
         }
-      }
-      
+        
 
-      // 更新上一分鐘的時間戳
-      setLastMinuteTime(currentMinuteTime);
+        // 更新上一分鐘的時間戳
+        setLastMinuteTime(currentMinuteTime);
+      }
     }
 
     //若目前有持倉 => 計算浮盈
@@ -186,10 +299,15 @@ const TrackETHContract2 = () => {
 
     //更新Now K High Low
     if(!NKH || price > NKH)
+    {
       setNKH(price);
+      localStorage.setItem("NKH", price);
+    }
     if(!NKL || price < NKL)
+    {
       setNKL(price);
-
+      localStorage.setItem("NKL", price);
+    }
   }, [price])
   //
 
