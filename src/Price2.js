@@ -1,8 +1,10 @@
-//市價入場 leave 結算
+// 2025.1.14 更: 增加early_leave 根據前根K棒 
+//若目前持倉為Short 則若價格超越前根K棒高點 轉為Long
+//           Long         跌破前根K棒低點 轉為Short
 
 import React, { useRef, useEffect, useState } from 'react';
 
-const Coin = "ETH";
+const Coin = "DOGE";
 
 const url = "https://www.okx.com/api/v5/market/ticker?instId=" + Coin + "-USDT-SWAP";
 
@@ -24,9 +26,16 @@ const botToken = '7903301344:AAE28RfW1X7yb4SA3SIPWFMs5lKLlKAU5Lw'; // 替換為�
 const chatId = '6945471691'; // 替換為你的聊天 ID
 
 const TrackETHContract2 = () => {
-  const round_seconds = 120;
-  const multi = 1.1;
-  const L = 10;
+  const round_seconds = 300; //時間週期
+  const multi = 1.1; //倍增倍率
+  const L = 10; //初始槓桿倍數
+ 
+  const [NKH, setNKH] = useState(); // Now K High
+  const [NKL, setNKL] = useState(); // Now K Low
+
+  const [FKH, setFKH] = useState(); // Fore K High
+  const [FKL, setFKL] = useState(); // Fore K Low
+
   //
   const [recordMPieces, setRecordMPieces] = useState([]);
   //currentPrice
@@ -91,10 +100,42 @@ const TrackETHContract2 = () => {
 
     // 更新當前價格
     const lastPrice = parseFloat(price);
+    
+    // Early Leave
+    if(status) // Long 破前低則市價止損 入Short
+    {
+      if(price < FKL)
+      {
+        setAutoLong(false);
+        setCountiCount(1);
+        leave();
+        setTrigger(prevTrigger => !prevTrigger);
+      }
+    }
+    else //Short 破前低則市價止損 入Long
+    {
+      if(price > FKH)
+      {
+        setAutoLong(true);
+        setCountiCount(1);
+        leave();
+        setTrigger(prevTrigger => !prevTrigger);
+      }
+    }
+    //
+
     // 判斷是否進入新的一分鐘
     console.log('lastMinuteTime', lastMinuteTime / 1000, 'currentMinuteTime', currentMinuteTime / 1000, 'times', currentTime / 1000);
     if (lastMinuteTime === null || currentMinuteTime !== lastMinuteTime) {
       console.log("Change M!");
+      //存下FK狀態
+      setFKH(NKH);
+      setFKL(NKL);
+      //
+      //Reset K棒狀態
+      setNKH(lastPrice);
+      setNKL(lastPrice);
+      //
       setRecordMPieces((prevPrices) => {
         const updatedPrices = [...prevPrices, lastPrice]; // 保存最後價格作為收盤價
         if (updatedPrices.length > 7) updatedPrices.shift(); // 保留最新 7 個
@@ -142,6 +183,13 @@ const TrackETHContract2 = () => {
         setProfit(_profit);
       }
     }
+
+    //更新Now K High Low
+    if(!NKH || price > NKH)
+      setNKH(price);
+    if(!NKL || price < NKL)
+      setNKL(price);
+
   }, [price])
   //
 
@@ -228,7 +276,7 @@ const TrackETHContract2 = () => {
   const leave = async() =>
   { 
     //結算
-    if(!price)
+    if(!price || !entryPrice)
       return;
     setIsDisabled(true);
     const exPrice = price;
@@ -240,6 +288,7 @@ const TrackETHContract2 = () => {
       _profit = parseFloat((entryPrice-exPrice)/entryPrice * margin * leverage);
 
     var bal = balance;
+    
     if(status){
       bal = parseFloat(balance - fee + (exPrice-entryPrice)/entryPrice * margin * leverage);
     }else{
@@ -404,6 +453,10 @@ const TrackETHContract2 = () => {
         <h3>Opening Prices: {openingPrices}</h3>
         <h3>Opening Prices: {recordMPieces.join(", ")}</h3>
         { price > openingPrices ? <h3>目前為漲K</h3> : <h3>目前為跌K</h3>}
+        <h3>FK High:{FKH}</h3>
+        <h3>FK Low:{FKL}</h3>
+        <h3>K High:{NKH}</h3>
+        <h3>K Low:{NKL}</h3>
     </div>
     </div>
     
