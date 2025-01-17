@@ -26,9 +26,9 @@ const botToken = '7903301344:AAE28RfW1X7yb4SA3SIPWFMs5lKLlKAU5Lw'; // 替換為�
 const chatId = '6945471691'; // 替換為你的聊天 ID
 
 const TrackETHContract2 = () => {
-  const round_seconds = 300; //時間週期
-  const multi = 1.1; //倍增倍率
-  const L = 10; //初始槓桿倍數
+  const round_seconds = 60; //時間週期
+  const multi = 1.25; //倍增倍率
+  const L = 10.0; //初始槓桿倍數
  
   const [NKH, setNKH] = useState(); // Now K High
   const [NKL, setNKL] = useState(); // Now K Low
@@ -223,25 +223,31 @@ const TrackETHContract2 = () => {
     //
 
     // 判斷是否進入新的一分鐘
-    console.log('lastMinuteTime', lastMinuteTime / 1000, 'currentMinuteTime', currentMinuteTime / 1000, 'times', currentTime / 1000);
+    //console.log('lastMinuteTime', lastMinuteTime / 1000, 'currentMinuteTime', currentMinuteTime / 1000, 'times', currentTime / 1000);
     if (lastMinuteTime === null || currentMinuteTime !== lastMinuteTime) {
 
-      if(lastMinuteTime == null)
+      if(lastMinuteTime == null || NKH == NKL)
       {
         setLastMinuteTime(currentMinuteTime);
       }
       else
       {
         console.log("Change M!");
+        const H = NKH;
+        const L = NKL;  
         //存下FK狀態
-        setFKH(NKH);
-        localStorage.setItem("FKH", JSON.stringify(NKH));
-        setFKL(NKL);
-        localStorage.setItem("FKL", JSON.stringify(NKL));
+        setFKH(H);
+        localStorage.setItem("FKH", JSON.stringify(H));
+        console.log("設置FKH", H)
+        setFKL(L);
+        localStorage.setItem("FKL", JSON.stringify(L));
+        console.log("設置FKL", L);
         //
         //Reset K棒狀態
         setNKH(lastPrice);
         setNKL(lastPrice);
+        localStorage.setItem("NKH", JSON.stringify(lastPrice));
+        localStorage.setItem("NKL", JSON.stringify(lastPrice));
         //
         setRecordMPieces((prevPrices) => {
           const updatedPrices = [...prevPrices, lastPrice]; // 保存最後價格作為收盤價
@@ -415,7 +421,8 @@ const TrackETHContract2 = () => {
     
     if(bal < balance) //Loss
     {
-      setLeverage(prevLeverage => prevLeverage * multi);
+      var M = leverage * multi;
+      setLeverage(M);
     }
     else
     {
