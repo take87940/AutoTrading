@@ -1,6 +1,4 @@
-// 2025.1.15更: 將opening Price 與 opening Prices儲存
-//將 FKH FHL NKH NKL儲存
-//CountiCount 儲存
+// 2025.1.19更: 日期紀錄 及 EL紀錄
 
 import React, { useRef, useEffect, useState } from 'react';
 
@@ -26,10 +24,10 @@ const botToken = '7903301344:AAE28RfW1X7yb4SA3SIPWFMs5lKLlKAU5Lw'; // 替換為�
 const chatId = '6945471691'; // 替換為你的聊天 ID
 
 const TrackETHContract2 = () => {
-  const round_seconds = 1800; //時間週期
+  const round_seconds = 60; //時間週期
   const multi = 1.1; //倍增倍率
   const L = 10.0; //初始槓桿倍數
- 
+
   const [NKH, setNKH] = useState(); // Now K High
   const [NKL, setNKL] = useState(); // Now K Low
 
@@ -60,11 +58,14 @@ const TrackETHContract2 = () => {
   const triggerRef = useRef(trigger);
   const [autoLong, setAutoLong] = useState();
   const [contiCount, setCountiCount] = useState(1);
+  var isEL = false;
+  var nowTime;
 
   const [isDisabled, setIsDisabled] = useState(false);
 
   //Info
   const [openingPrices, setOpeningPrices] = useState(null);
+  const [time, setTime] = useState();
 
 
   useEffect(() => {
@@ -194,6 +195,29 @@ const TrackETHContract2 = () => {
     const currentTime = now.getTime(); // 當前的毫秒數
     const currentMinuteTime = Math.floor(currentTime / round_seconds / 1000) * round_seconds * 1000; // 當前分鐘的毫秒數起點（整分）
 
+    // 取得當前時間戳
+    const timestamp = Date.now();
+
+    // 創建一個新的 Date 物件
+    const date = new Date(timestamp);
+
+    // 設置台灣時區（UTC+8）
+    const options = {
+      timeZone: 'Asia/Taipei',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false // 使用 24 小時制
+    };
+
+    // 格式化日期
+    const formattedTime = date.toLocaleTimeString('en-US', options);
+    nowTime = formattedTime;
+    setTime(formattedTime);
+    //
+
     // 更新當前價格
     const lastPrice = parseFloat(price);
     
@@ -203,10 +227,12 @@ const TrackETHContract2 = () => {
       if(price < FKL)
       {
         setAutoLong(false);
+        isEL = true;
         setCountiCount(1);
         localStorage.setItem("CountiCount", JSON.stringify(1));
         leave();
         setTrigger(prevTrigger => !prevTrigger);
+        isEL = false;
       }
     }
     else //Short 破前低則市價止損 入Long
@@ -214,10 +240,12 @@ const TrackETHContract2 = () => {
       if(price > FKH)
       {
         setAutoLong(true);
+        isEL = true;
         setCountiCount(1);
         localStorage.setItem("CountiCount", JSON.stringify(1));
         leave();
         setTrigger(prevTrigger => !prevTrigger);
+        isEL = false;
       }
     }
     //
@@ -448,7 +476,10 @@ const TrackETHContract2 = () => {
       Fee: (fee).toFixed(2),
       ProfitPercentage: ((_profit - fee) / margin * 100).toFixed(2),
       balance: (bal).toFixed(2),
+      isEL,
+      nowTime,
     }];
+    console.log(entryPrice, isEL);
     setHistory(newHistory);
     localStorage.setItem("history", JSON.stringify(newHistory)); // 儲存歷史紀錄到 LocalStorage
 
@@ -526,7 +557,7 @@ const TrackETHContract2 = () => {
   const renderHistory = () => {
     return history.map((trade, index) => (
       <div key={index}>
-        <h3>交易 {index + 1}</h3>
+        <h3>交易 {index + 1} ({trade.nowTime} {trade.isEL && <span>EL</span>})</h3>
         <span>資產: {trade.asset} 數量: {trade.Amount}USDT ({trade.status ? <span>Long + {trade.contiCount}</span> : <span>Short + {trade.contiCount}</span>}) ({trade.leverage}x) </span>
         <div>
           <span>入場價格: {trade.entryPrice} 出場價格: {trade.exitPrice}</span>
@@ -555,6 +586,7 @@ const TrackETHContract2 = () => {
     <div style={{ display: 'flex', justifyContent: 'space-between', height: '100vh' }}>
     <div style={{ flex: 1, padding: '20px' }}>
       <h1>Real-time {Coin} Contract Tracking</h1>
+      <h2>{time}</h2>
       <h1>Price: {price || "Loading..."}</h1>
       {balance && <h2>Account Balance: {(balance).toFixed(2)} USDT</h2>}
       {entryPrice && <h2>Float Balance: {(profit + balance).toFixed(2)} USDT</h2>}
