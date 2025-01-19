@@ -24,7 +24,7 @@ const botToken = '7903301344:AAE28RfW1X7yb4SA3SIPWFMs5lKLlKAU5Lw'; // 替換為�
 const chatId = '6945471691'; // 替換為你的聊天 ID
 
 const TrackETHContract2 = () => {
-  const round_seconds = 60; //時間週期
+  const round_seconds = 1800; //時間週期
   const multi = 1.1; //倍增倍率
   const L = 10.0; //初始槓桿倍數
 
